@@ -1,0 +1,9 @@
+# Introduction for the Literature Survey Report
+
+Pneumonia is a serious respiratory infection and remains an important health problem, particularly in children. Chest X-ray imaging is commonly used as an important source of information for pneumonia assessment, but interpretation can be time-consuming and depends on clinical expertise. These challenges have motivated researchers to investigate deep-learning methods for automated classification of chest X-ray images.
+
+Convolutional neural networks (CNNs) have become widely used for medical image classification because they can learn discriminative visual features directly from images. Research on pneumonia detection has progressed from CNNs trained from scratch to transfer-learning approaches, ensemble models, attention mechanisms, capsule networks, and more recent representation-learning methods. However, high performance on a benchmark dataset does not necessarily guarantee robust generalization to images from different populations, hospitals, or imaging conditions.
+
+In this project, we study pneumonia classification using the Kermany pediatric chest X-ray dataset, which contains labelled Normal and Pneumonia images. We selected the work of Stephen et al. (2019), *An Efficient Deep Learning Approach to Pneumonia Classification in Healthcare*, as our base paper because it uses the same dataset and proposes a relatively simple CNN trained from scratch. The study reported 95.31% training accuracy and 93.73% validation accuracy for its 200 × 200 RGB configuration.
+
+Our first objective is therefore to reproduce the methodology and establish a reliable baseline. After baseline reproduction, we will investigate one controlled architectural modification and evaluate whether it improves generalization. The broader motivation of the project is to examine not only whether a model achieves high benchmark accuracy, but also how architectural choices influence reliability and generalization.

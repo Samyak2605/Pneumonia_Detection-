@@ -1,0 +1,27 @@
+# Milestone 2 & 3: Presentation Material
+
+## 1. Brief Introduction (For the PPT)
+- Pneumonia detection from chest X-rays is an important medical image-classification problem.
+- CNNs can automatically learn visual features from X-ray images for Normal vs. Pneumonia classification.
+- Existing research has progressed from basic CNNs to transfer learning, ensembles, attention and advanced representation learning.
+- However, high benchmark accuracy does not always guarantee good generalization or robustness.
+- **Our objective**: reproduce a simple CNN baseline from Stephen et al. (2019) and then test one controlled architectural modification.
+
+---
+
+## 2. Hypothesis (For the PPT)
+
+**Proposed Change:**
+Replace the `Flatten` + `Dense(512)` classification head with `GlobalAveragePooling2D` while keeping the convolutional feature extractor unchanged.
+
+**Hypothesis:**
+We hypothesize that replacing the large `Flatten` + `Dense(512)` classification head with `GlobalAveragePooling2D` will reduce overfitting by substantially decreasing the number of trainable parameters, leading to improved validation F1-score and/or AUC while maintaining comparable classification accuracy.
+
+**Predicted Outcome:**
+We expect the proposed model to:
+- have substantially fewer trainable parameters;
+- potentially achieve slightly lower training accuracy;
+- achieve equal or better validation F1-score and AUC if the baseline is overfitting;
+- provide a simpler and more parameter-efficient classification head.
+
+*Important: This is our prediction before experimentation. We have not claimed an improvement yet.*
