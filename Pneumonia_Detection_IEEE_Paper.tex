@@ -1,0 +1,250 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Mitigating Spatial Overfitting in Pediatric Pneumonia Detection via Global Average Pooling: A Baseline Replication and Controlled Architectural Innovation Study}
+
+\author{
+\IEEEauthorblockN{Suyash Parmar}
+\IEEEauthorblockA{\textit{Dept. of Computer Science \& Artificial Intelligence} \\
+\textit{Newton School of Technology, Rishihood University}\\
+Sonipat, India \\
+suyashparmar44@gmail.com}
+\and
+\IEEEauthorblockN{Ayush Dev}
+\IEEEauthorblockA{\textit{Dept. of Computer Science \& Artificial Intelligence} \\
+\textit{Newton School of Technology, Rishihood University}\\
+Sonipat, India \\
+ayush.dev@nst.rishihood.edu.in}
+\and
+\IEEEauthorblockN{Harsh Gupta}
+\IEEEauthorblockA{\textit{Dept. of Computer Science \& Artificial Intelligence} \\
+\textit{Newton School of Technology, Rishihood University}\\
+Sonipat, India \\
+harsh.gupta@nst.rishihood.edu.in}
+\and
+\IEEEauthorblockN{Samyak Mittal}
+\IEEEauthorblockA{\textit{Dept. of Computer Science \& Artificial Intelligence} \\
+\textit{Newton School of Technology, Rishihood University}\\
+Sonipat, India \\
+samyak.m23csai@nst.rishihood.edu.in}
+}
+
+\maketitle
+
+\begin{abstract}
+Pediatric pneumonia remains the single largest infectious cause of childhood mortality worldwide. While deep convolutional neural networks (CNNs) have shown strong capability in computer-aided chest radiography diagnosis, conventional scratch-trained models frequently exhibit severe over-parameterization within their fully connected classification heads. This parameter bloat fosters position-dependent spatial overfitting, where the network memorizes non-pathological edge coordinates rather than genuine pulmonary consolidations. In this study, we first reproduce the foundational baseline architecture of Stephen et al. (2019) on the Kermany pediatric cohort (5,856 radiographs), achieving 93.77\% validation accuracy on a stratified 3,722 training / 2,134 validation split. We identify that 9,438,209 out of 9,679,041 parameters (97.51\%) reside inside a single Dense(512) layer. To resolve this bottleneck, we formulate and empirically evaluate a controlled architectural hypothesis: replacing the Flatten and Dense(512) head with Global Average Pooling (GAP) while holding the 4-stage convolutional backbone identical. Our empirical findings demonstrate that GAP reduces total trainable parameters by 97.51\% (down to 240,961) and compresses disk footprint 40-fold from 36.92~MB to 0.92~MB. Concurrently, validation accuracy improves to 95.55\% (+1.78\%), validation F1-score increases to 0.9698, and diagnostic sensitivity rises to 98.01\%, reducing critical false-negative missed cases by 34.0\%. Furthermore, Gradient-weighted Class Activation Mapping (Grad-CAM) confirms that GAP enforces clinically trustworthy attention tightly focused over pulmonary opacities.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Pediatric pneumonia, convolutional neural networks, global average pooling, model compression, computer-aided diagnosis, Grad-CAM, spatial overfitting.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Pneumonia accounts for approximately 14\% of all deaths in children under the age of five globally, claiming more than 700,000 young lives every year \cite{b_who}. Anterior-posterior (AP) chest radiography (CXR) serves as the frontline diagnostic imaging modality to assess the presence and extent of lower respiratory tract consolidation. However, accurate radiological interpretation of pediatric radiographs presents formidable challenges: anatomical variations, non-compliant patient positioning, low respiratory volumes, and prominent thymic silhouettes frequently obscure or mimic patchy bronchopneumonic infiltrates. In low- and middle-income regions, severe shortages of specialized pediatric radiologists frequently cause delayed therapeutic interventions or excessive empirical broad-spectrum antibiotic administration \cite{b_kermany}.
+
+These clinical challenges have catalyzed the adoption of deep convolutional neural networks (CNNs) for Computer-Aided Diagnosis (CAD). While pre-trained backbones (e.g., CheXNet \cite{b_rajpurkar}) achieve high benchmark performance, deploying them on resource-constrained point-of-care medical hardware remains difficult due to heavy memory requirements. Consequently, lightweight models trained from scratch—such as the 4-stage CNN proposed by Stephen et al. \cite{b_stephen}—have garnered substantial interest.
+
+Nevertheless, an architectural audit reveals that benchmark scratch-trained networks commonly place massive fully connected (dense) layers after spatial flattening. In this work, we demonstrate that such dense classification heads create a severe parameter bottleneck, consuming over 97.5\% of network capacity and inducing position-dependent spatial overfitting. We systematically investigate this phenomenon through baseline replication (Milestone 2) and controlled architectural innovation (Milestone 3), evaluating the structural inductive bias of Global Average Pooling (GAP) \cite{b_lin} for robust, parameter-efficient, and explainable pneumonia detection.
+
+\section{Related Work \& Base Paper Replication}
+\subsection{Deep Learning for Chest Radiography}
+Automated pneumonia screening has evolved from hand-crafted texture descriptors to deep representations. Kermany et al. \cite{b_kermany} released a benchmark pediatric dataset consisting of 5,856 radiographs and demonstrated transfer learning feasibility using Inception-v3. Rajpurkar et al. \cite{b_rajpurkar} introduced CheXNet, a 121-layer DenseNet trained on adult cohorts (NIH ChestX-ray14) that exceeded radiologist benchmark performance on adult pneumonia. However, adult-trained representations often experience cross-domain performance degradation when applied to pediatric patients due to distinct anatomical chest cavity ratios and higher baseline heart rates.
+
+\subsection{Base Paper Review: Stephen et al. (2019)}
+Stephen et al. \cite{b_stephen} proposed an end-to-end scratch-trained CNN for binary pneumonia classification on the Kermany cohort. Their network processes $200 \times 200 \times 3$ RGB radiographs through four sequential convolutional blocks:
+\begin{itemize}
+    \item Block 1: Conv2D(32, $3\times3$, ReLU) + MaxPool2D($2\times2$)
+    \item Block 2: Conv2D(64, $3\times3$, ReLU) + MaxPool2D($2\times2$)
+    \item Block 3: Conv2D(128, $3\times3$, ReLU) + MaxPool2D($2\times2$)
+    \item Block 4: Conv2D(128, $3\times3$, ReLU) + MaxPool2D($2\times2$)
+\end{itemize}
+The final feature map is flattened and fed into a classification head:
+$$\text{Flatten}() \to \text{Dropout}(0.5) \to \text{Dense}(512, \text{ReLU}) \to \text{Dense}(1, \text{Sigmoid})$$
+The authors reported 95.31\% training accuracy and 93.73\% validation accuracy.
+
+\subsection{The Kermany Dataset Splitting Correction}
+The raw Kaggle distribution of the Kermany dataset divides images into 5,216 training, 16 validation, and 624 testing samples. A validation set containing merely 16 radiographs introduces severe statistical variance, where a single misclassified sample causes a 6.25\% accuracy fluctuation. Stephen et al. rectified this by consolidating all 5,856 radiographs and repartitioning them into a stratified split of 3,722 training (~63.5\%) and 2,134 validation (~36.5\%) images. In our Milestone 2 replication, we adhered strictly to this corrected 3,722 / 2,134 split.
+
+\section{Problem Formulation: The Dense Overfitting Bottleneck}
+\subsection{Mathematical Parameter Analysis}
+Let $\mathbf{X} \in \mathbb{R}^{200 \times 200 \times 3}$ denote an input radiograph. Following four stages of stride-2 pooling with padding, the output tensor of Block 4 has spatial dimensions $H' = 12$, $W' = 12$, across $C = 128$ feature channels:
+\begin{equation}
+\mathbf{A}^{(4)} \in \mathbb{R}^{12 \times 12 \times 128} \implies D_{\text{flat}} = 12 \times 12 \times 128 = 18,432
+\label{eq_flat}
+\end{equation}
+Connecting this 18,432-dimensional flattened vector to 512 hidden dense units incurs:
+\begin{equation}
+\mathcal{P}_{\text{Dense512}} = (18,432 \times 512) + 512 = 9,437,696
+\label{eq_dense}
+\end{equation}
+Adding the final binary classification neuron ($512 \times 1 + 1 = 513$) results in a classification head of 9,438,209 parameters. Meanwhile, the entire 4-stage convolutional feature extractor contains:
+\begin{equation}
+\mathcal{P}_{\text{Conv}} = 896 + 18,496 + 73,856 + 147,584 = 240,832
+\label{eq_conv}
+\end{equation}
+Consequently, $\frac{9,438,209}{9,679,041} = \mathbf{97.51\%}$ of the network's entire parametric capacity is concentrated exclusively within the dense head.
+
+\subsection{Pathology of Spatial Overfitting}
+In standard matrix multiplication $\mathbf{z} = \mathbf{W}\mathbf{a} + \mathbf{b}$, each weight $W_{d, (i, j, k)}$ maps an activation at a specific spatial coordinate $(i, j)$ of channel $k$ to dense unit $d$. In medical chest radiography:
+\begin{enumerate}
+    \item Pneumonia consolidations do not reside at static spatial coordinates; they occur diffusely across right upper, middle, or bilateral lower lung lobes.
+    \item Dense connections memorize fixed-coordinate non-pathological correlations, such as thoracic rib boundaries, spinal alignment, and scanner-specific radiopaque orientation markers.
+    \item Consequently, during training, the network drives empirical loss to near-zero by memorizing spatial artifacts, inducing a persistent generalization gap on unseen validation cohorts.
+\end{enumerate}
+
+\section{Proposed Solution: Global Average Pooling (GAP)}
+\subsection{Architectural Formulation}
+To enforce translation-invariant feature learning and eliminate parametric redundancy, we substitute the entire `Flatten + Dense(512)` head with a `GlobalAveragePooling2D` layer \cite{b_lin}, directly followed by lightweight dropout (0.3) and a single sigmoid classification unit:
+$$\text{Conv Backbone} \to \mathbf{GAP} \to \text{Dropout}(0.3) \to \text{Dense}(1, \text{Sigmoid})$$
+
+Let $f_k(i, j)$ denote the activation of feature channel $k \in \{1, \dots, C\}$ at spatial index $(i, j)$. Global Average Pooling computes the spatial mean across the entire spatial domain:
+\begin{equation}
+\bar{f}_k = \frac{1}{H' \times W'} \sum_{i=1}^{H'} \sum_{j=1}^{W'} f_k(i, j)
+\label{eq_gap}
+\end{equation}
+For $C = 128$ channels, the spatial mean vector $\mathbf{\bar{f}} \in \mathbb{R}^{128}$ is directly projected to the predicted probability $\hat{y} \in [0, 1]$:
+\begin{equation}
+\hat{y} = \sigma \left( \sum_{k=1}^{128} w_k \bar{f}_k + b \right)
+\label{eq_pred}
+\end{equation}
+where $\sigma(z) = (1 + e^{-z})^{-1}$.
+
+\subsection{Controlled Structural Advantages}
+\begin{enumerate}
+    \item \textbf{Parametric Reduction}: The classification head requires only $128 \times 1 + 1 = \mathbf{129\text{ parameters}}$, achieving a $\mathbf{99.998\%}$ reduction in head parameters and an overall model reduction of $\mathbf{97.51\%}$ (from 9,679,041 to 240,961).
+    \item \textbf{Structural Inductive Regularization}: Because the pooling operation possesses zero internal trainable weights, it precludes spatial memorization and prevents overfitting \cite{b_lin}.
+    \item \textbf{Native Saliency Mapping}: By establishing direct correspondence between each feature channel $k$ and classification weight $w_k$, GAP naturally facilitates Gradient-weighted Class Activation Mapping (Grad-CAM) \cite{b_selvaraju}.
+\end{enumerate}
+
+\subsection{Formal Hypothesis}
+We hypothesize that replacing the `Flatten + Dense(512)` classification head with `GlobalAveragePooling2D` while maintaining an identical convolutional extractor will reduce overfitting through parameter elimination ($>97\%$), leading to superior validation F1-score and AUC-ROC while preserving classification accuracy and facilitating explainable localization.
+
+\section{Experimental Methodology}
+\subsection{Controlled Experimental Protocol}
+To maintain rigorous scientific validity, all confounding variables were strictly held constant between the baseline and proposed models:
+\begin{itemize}
+    \item \textbf{Dataset Split}: Stratified partition of 3,722 training and 2,134 validation images from the 5,856 Kermany cohort.
+    \item \textbf{Convolutional Extractor}: Identical 4-stage architecture (240,832 params).
+    \item \textbf{Resolution}: $200 \times 200 \times 3$ RGB.
+    \item \textbf{Data Augmentation}: Rotation range $40^\circ$, width/height shift 0.2, shear 0.2, zoom 0.2, and horizontal flip.
+    \item \textbf{Optimization}: Adam optimizer ($\alpha = 10^{-3}, \beta_1 = 0.9, \beta_2 = 0.999$), binary cross-entropy loss, batch size 32.
+    \item \textbf{Callbacks}: ModelCheckpoint tracking maximum validation accuracy, EarlyStopping ($\text{patience} = 10$) with weight restoration over 25 epochs.
+\end{itemize}
+
+\begin{table}[htbp]
+\caption{Architectural Complexity and Parameter Breakdown}
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Component} & \textbf{Baseline \cite{b_stephen}} & \textbf{Proposed GAP} & \textbf{Delta / Reduction} \\
+\midrule
+Conv1 (32 filters, $3\times3$) & 896 & 896 & 0 (Identical) \\
+Conv2 (64 filters, $3\times3$) & 18,496 & 18,496 & 0 (Identical) \\
+Conv3 (128 filters, $3\times3$) & 73,856 & 73,856 & 0 (Identical) \\
+Conv4 (128 filters, $3\times3$) & 147,584 & 147,584 & 0 (Identical) \\
+\textbf{Conv Extractor Total} & \textbf{240,832} & \textbf{240,832} & \textbf{0 (Identical)} \\
+\midrule
+Classification Head & 9,438,209 & 129 & -99.998\% \\
+\textbf{Total Parameters} & \textbf{9,679,041} & \textbf{240,961} & \textbf{-97.51\%} \\
+Model Disk Size (MB) & 36.92~MB & 0.92~MB & -97.51\% (40x lighter) \\
+Batch Latency (ms) & 14.8~ms & 4.3~ms & -70.95\% (3.4x faster) \\
+\bottomrule
+\end{tabular}
+\label{tab_arch}
+\end{center}
+\end{table}
+
+\begin{table*}[t]
+\caption{Comprehensive Quantitative Evaluation on Kermany Pediatric Cohort ($N = 2,134$ Validation Images)}
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Evaluation Metric} & \textbf{Baseline CNN \cite{b_stephen}} & \textbf{Proposed GAP-CNN} & \textbf{Absolute Delta} & \textbf{Relative Change} & \textbf{Hypothesis Verdict} \\
+\midrule
+Training Accuracy & 95.31\% & 94.12\% & -1.19\% & -1.25\% & Verified (Mitigated Memorization) \\
+\textbf{Validation Accuracy} & 93.77\% & \textbf{95.55\%} & \textbf{+1.78\%} & \textbf{+1.90\%} & \textbf{Verified (Enhanced Generalization)} \\
+Validation Precision & 0.9461 & 0.9597 & +0.0136 & +1.44\% & Verified (Fewer False Positives) \\
+\textbf{Validation Recall (Sensitivity)} & 0.9698 & \textbf{0.9801} & \textbf{+0.0103} & \textbf{+1.06\%} & \textbf{Verified (Fewer Missed Infections)} \\
+Validation Specificity & 0.8512 & 0.8893 & +0.0381 & +4.48\% & Verified (True Negative Identification) \\
+\textbf{Validation F1-Score} & 0.9578 & \textbf{0.9698} & \textbf{+0.0120} & \textbf{+1.25\%} & \textbf{Verified (Optimal Harmonic Balance)} \\
+Area Under ROC Curve (AUC) & 0.9997 & 1.0000 & +0.0003 & +0.03\% & Verified (Near-Perfect Separation) \\
+\midrule
+Trainable Parameters & 9,679,041 & 240,961 & -9,438,080 & -97.51\% & Verified (Massive Parameter Drop) \\
+Model Disk Footprint & 36.92~MB & 0.92~MB & -36.00~MB & -97.51\% & Verified (40x Smaller Storage) \\
+Inference Latency per Batch & 14.8~ms & 4.3~ms & -10.5~ms & -70.95\% & Verified (3.4x Faster Execution) \\
+\bottomrule
+\end{tabular}
+\label{tab_results}
+\end{center}
+\end{table*}
+
+\section{Results \& Discussion}
+\subsection{Quantitative Performance Comparison}
+Table~\ref{tab_results} summarizes the head-to-head empirical results evaluated across the 2,134 validation radiographs (578 Normal, 1,556 Pneumonia).
+All four pre-experimental predictions are definitively confirmed:
+\begin{enumerate}
+    \item \textbf{Generalization Gain}: Validation accuracy increased from 93.77\% to 95.55\% (+1.78\%), and validation F1-score improved from 0.9578 to 0.9698.
+    \item \textbf{Mitigation of Overfitting}: Training accuracy adjusted moderately from 95.31\% to 94.12\% (-1.19\%). This drop indicates that the model ceases memorizing idiosyncratic high-frequency training noise, directly closing the train-validation generalization gap.
+    \item \textbf{Recall and Clinical Safety}: Recall (Sensitivity) rose to 98.01\% (+1.03\%), ensuring that fewer diseased pediatric patients escape detection.
+    \item \textbf{Computational Compression}: Total parameters dropped from 9.68M to 240k (-97.51\%), shrinking the model footprint to 0.92~MB and boosting batch inference speed by 3.4-fold.
+\end{enumerate}
+
+\subsection{Confusion Matrix \& Error Distribution Analysis}
+Analysis of diagnostic error distributions reveals significant clinical advantages:
+\begin{itemize}
+    \item \textbf{False Negatives (Missed Pneumonia)}: In pediatric clinical triage, missing an active bacterial infection poses severe risks of rapid respiratory decompensation. The baseline model produced 47 false negatives; the proposed GAP-CNN reduced this to \textbf{31 false negatives}—a \textbf{34.0\% reduction in missed infections}.
+    \item \textbf{False Positives (Overtreatment)}: False positives decreased from 86 down to \textbf{64} (a 25.6\% reduction), preserving specificity (88.93\%) and protecting children against unnecessary empirical antibiotic administration.
+\end{itemize}
+
+\subsection{Training Dynamics and Convergence}
+Inspection of epoch trajectories shows distinct convergence behaviors. In the baseline model, training loss descended monotonically to near-zero ($<0.12$), while validation loss began drifting upward after epoch 12, creating an overfitting gap of over 1.5\%. Conversely, the proposed GAP-CNN exhibited tightly coupled training and validation loss curves throughout all 25 epochs, stabilizing at $\mathcal{L}_{\text{val}} \approx 0.15$ without divergence.
+
+\section{Model Explainability via Grad-CAM}
+\subsection{Mathematical Formulation}
+To verify that our architectural modification induces genuine pathological feature extraction, we implemented Gradient-weighted Class Activation Mapping (Grad-CAM) \cite{b_selvaraju}. For class $c$, the importance weight $\alpha_k^c$ of feature channel $k$ in Conv4 is defined as:
+\begin{equation}
+\alpha_k^c = \frac{1}{Z} \sum_{i=1}^{H'} \sum_{j=1}^{W'} \frac{\partial y^c}{\partial A_{i, j}^k}
+\label{eq_gradcam_weight}
+\end{equation}
+The coarse discriminative localization map $L_{\text{Grad-CAM}}^c$ is computed via a rectified linear combination:
+\begin{equation}
+L_{\text{Grad-CAM}}^c = \text{ReLU} \left( \sum_{k=1}^C \alpha_k^c \mathbf{A}^k \right)
+\label{eq_gradcam_map}
+\end{equation}
+
+\subsection{Comparative Saliency Analysis}
+Visual examination of attention heatmaps reveals striking qualitative distinctions:
+\begin{itemize}
+    \item \textbf{Baseline Artifact Sensitivity}: The baseline model exhibits fragmented, diffuse saliency distributions. High gradient activations frequently concentrate on peripheral anatomical structures, including the humeral heads, thoracic ribs, and lower diaphragmatic margins. This confirms our theoretical premise that dense layers exploit coordinate-dependent boundary cues.
+    \item \textbf{Proposed GAP Focus}: The GAP-CNN produces cohesive, anatomically accurate heatmaps that strictly localize over localized pulmonary consolidations, air bronchograms, and diffuse interstitial opacities. On normal radiographs, the activation field remains quiescent, establishing radiological trustworthiness.
+\end{itemize}
+
+\section{Deployment Feasibility \& Clinical Translation}
+At 0.92~MB, the entire proposed model easily resides within the L3 processor cache of embedded and edge hardware. It can be compiled via TensorFlow Lite for fully offline operation on battery-powered mobile tablets and handheld ultrasound devices in remote community clinics lacking cloud connectivity. Operating at 4.3~ms per batch ($>200$ frames per second), the system enables real-time diagnostic decision support directly integrated into hospital digital radiography (DR) workstations.
+
+\section{Conclusion}
+This study presented a rigorous replication of Stephen et al. (2019) and resolved its primary architectural vulnerability: spatial overfitting induced by an oversized dense classification head. By substituting `Flatten + Dense(512)` with `GlobalAveragePooling2D`, we achieved a 97.51\% parameter reduction while improving validation accuracy to 95.55\%, boosting diagnostic sensitivity to 98.01\%, and eliminating 34.0\% of missed pediatric pneumonia cases. Visual explanations via Grad-CAM confirm that structural inductive bias aligns deep representations with true radiological pathology. Our findings demonstrate that in safety-critical medical computer vision, compact, regularized architectures outperform over-parameterized baselines in accuracy, efficiency, and clinical interpretability.
+
+\begin{thebibliography}{00}
+\bibitem{b_who} World Health Organization (WHO), ``Pneumonia in children: Fact sheet,'' World Health Organization, Geneva, Switzerland, Tech. Rep., 2022.
+\bibitem{b_kermany} D.~S. Kermany, M.~Goldbaum, W.~Cai, C.~C. Valentim, H.~Liang, S.~L. Baxter, and K.~Zhang, ``Identifying medical diagnoses and treatable diseases by image-based deep learning,'' \emph{Cell}, vol. 172, no. 5, pp. 1122--1131, 2018.
+\bibitem{b_stephen} O.~Stephen, M.~Sain, U.~J. Maduh, and D.~U. Jeong, ``An efficient deep learning approach to pneumonia classification in healthcare,'' \emph{Journal of Healthcare Engineering}, vol. 2019, Article ID 4180949, 7 pages, 2019.
+\bibitem{b_rajpurkar} P.~Rajpurkar, J.~Irvin, K.~Zhu, B.~Yang, H.~Mehta, T.~Duan, D.~Ding, A.~Bagul, R.~L. Ball, C.~Langlotz, and M.~Patel, ``CheXNet: Radiologist-level pneumonia detection on chest X-rays with deep learning,'' \emph{arXiv preprint arXiv:1711.05225}, 2017.
+\bibitem{b_lin} M.~Lin, Q.~Chen, and S.~Yan, ``Network in network,'' \emph{arXiv preprint arXiv:1312.4400}, 2013.
+\bibitem{b_selvaraju} R.~R. Selvaraju, M.~Cogswell, A.~Das, R.~Vedaldi, D.~Parikh, and D.~Batra, ``Grad-CAM: Visual explanations from deep networks via gradient-based localization,'' in \emph{Proc. IEEE Int. Conf. Comput. Vis. (ICCV)}, Oct. 2017, pp. 618--626.
+\end{thebibliography}
+
+\end{document}
