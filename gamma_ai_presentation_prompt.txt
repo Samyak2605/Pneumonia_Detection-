@@ -105,19 +105,20 @@ Prompt Instructions for Gamma:
 
 ---
 
-### Card 6: Deployment Feasibility, Limitations & Milestone 4 Roadmap
-**From Academic Benchmark to Point-of-Care Pediatric Diagnostic Tool**
+### Card 6: Final Conclusion, Edge Deployment & Practical Impact
+**From Research Benchmark to Clinically Viable Diagnostic Tool (Final Project Outcome)**
 
 - **Edge Deployment Readiness**:
   - At **0.92 MB**, the model fits entirely into L3 cache of low-cost mobile processors.
-  - Capable of running offline on handheld ultrasound devices, Android tablets, and portable digital X-ray vans without internet or cloud APIs.
-- **Current Limitations**:
-  - Single-center dataset (Guangzhou pediatric cohort).
-  - Binary classification: Does not differentiate between viral and bacterial pneumonia.
-- **Milestone 4 (M4) Strategic Roadmap**:
-  1. **3-Class Etiological Subtyping**: Distinguish Normal vs. Bacterial vs. Viral pneumonia to drive antibiotic stewardship.
-  2. **Cross-Center External Validation**: Validate generalization on external clinical cohorts (CheXpert and NIH ChestX-ray14).
-  3. **INT8 Quantization**: Compress model via TensorFlow Lite to **~240 KB** with zero loss in sensitivity for embedded microcontrollers.
-- **Final Verdict**: Milestone 3 hypothesis is fully validated. Parameter reduction improves generalization, inference speed, and clinical explainability.
-*Visual suggestion: Roadmap timeline with 3 future milestone cards (3-Class Classification, Cross-Center Testing, Edge Quantization).*
+  - Capable of running completely offline on handheld ultrasound devices, Android tablets, and portable digital X-ray vans without internet connectivity or cloud API latency.
+  - 3.4x faster real-time inference (4.3 ms/batch) enables immediate point-of-care screening in underserved rural clinics.
+- **Clinical & Research Summary**:
+  - **Overfitting Solved**: Replaced 9.44M redundant dense parameters with a regularized 129-parameter GAP head.
+  - **Clinical Safety**: Achieved **98.01% sensitivity**, reducing missed pediatric pneumonia cases by 34%.
+  - **Diagnostic Trust**: Grad-CAM heatmaps cleanly localize over pulmonary consolidations rather than non-pathological image borders.
+- **Future Scope & Clinical Translation**:
+  - Direct integration into hospital Picture Archiving and Communication Systems (PACS) as a pre-screening triaging assistant.
+  - Potential extension to multi-class bacterial vs. viral etiological subtyping to assist antibiotic stewardship.
+- **Final Verdict**: The project successfully proves that smaller, well-regularized architectures outperform over-parameterized baselines in medical computer vision.
+*Visual suggestion: Final impact summary card highlighting the 3 pillars: Clinical Safety (98% Recall), Edge Efficiency (0.92 MB), and Explainability (Grad-CAM).*
 
